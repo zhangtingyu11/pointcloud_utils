@@ -35,10 +35,24 @@ class PointCloud():
 		Args:
 		    pcd_filename ([str]): [pcd文件路径]
 		"""
-		pcd = pcl.load(filename)
-		self.pc_numpy = np.asarray(pcd)
-		self.channel_num = 3
-		self.open_cloud = self.numpy_to_open3d()
+
+		pts = []
+		f = open(pcd_filename, 'r')
+		data = f.readlines()
+
+		f.close()
+		line = data[9]
+		# print line
+		line = line.strip('\n')
+		i = line.split(' ')
+		pts_num = eval(i[-1])
+		for line in data[11:]:
+			line = line.strip('\n')
+			point_attr = line.split(' ')
+			a_float_m = map(float, point_attr)
+			pts.append(list(a_float_m))
+		return np.asarray(pts)
+
 
 	def read_bin_file(self, bin_filename):
 		self.pc_numpy = np.fromfile(bin_filename, dtype=np.float32).reshape(-1, self.channel_num)
@@ -111,5 +125,5 @@ class PointCloud():
 if __name__ == '__main__':
 	filename = 'data/n008-2018-08-01-15-16-36-0400__LIDAR_TOP__1533151605548192.pcd.bin'
 	PCL = PointCloud(5, filename)
-	PCL.display_pc()()
+	PCL.display_pc()
 
