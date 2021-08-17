@@ -1,6 +1,7 @@
 import open3d as o3d
 import numpy as np
-import pcl
+from bbox_utils import BoundingBox_3d
+import math
 
 class PointCloud():
 	def __init__(self, channel_num = 3, filename = None, points = None) -> None:
@@ -16,6 +17,8 @@ class PointCloud():
 			self.read_pc_from_file(filename)
 		if(points != None):
 			self.pc_numpy = points
+		self.create_vis()
+
 		
 
 	def read_pc_from_file(self, filename:str):
@@ -51,7 +54,8 @@ class PointCloud():
 			point_attr = line.split(' ')
 			a_float_m = map(float, point_attr)
 			pts.append(list(a_float_m))
-		return np.asarray(pts)
+		self.pc_numpy = np.asarray(pts, dtype=np.float32)
+		self.open_cloud = self.numpy_to_open3d()
 
 
 	def read_bin_file(self, bin_filename):
@@ -71,59 +75,58 @@ class PointCloud():
 		self.vis.destroy_window()
 
 	def display_pc(self, bbox_array = None):
-		self.create_vis()
 		self.vis.add_geometry(self.open_cloud)
-		points_box = np.array([[0, 0, 0],[1,0,0],[1,3,0],[0,3,0],[0,3,3],[0,0,3],[1,0,3],[1,3,3]])
-		lines_box = np.array([[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [3, 0],
-					[7, 4], [0, 5], [1, 6], [2, 7]])
-		colors = np.array([[0, 1, 0] for j in range(len(lines_box))])
-		line_set = o3d.geometry.LineSet()
-		line_set.points = o3d.utility.Vector3dVector(points_box)
-		line_set.lines = o3d.utility.Vector2iVector(lines_box)
-		line_set.colors = o3d.utility.Vector3dVector(colors)
-		self.vis.add_geometry(line_set)
-
 		render_option = self.vis.get_render_option()
 		render_option.point_size = 2
 		render_option.background_color = np.asarray([0, 0, 0])
 	
 		self.vis.run()
-		
 		self.destroy_vis()
 
-	def draw_3dboxes(self, ):
+	def draw_3dboxes(self, boxes, color = [0,1,0]):
+		for box in boxes:
+			self.draw_3dbox(box, color)
 
 
-	def draw_3dbox(self, bbox_array:np.array):
+	def draw_3dbox(self, bbox:BoundingBox_3d, color = [0,1,0]):
 		"""[基于点云画3D包围框]
 
 		Args:
-		    bbox_array (np.array): [3D包围框的8个点，需要按照以下顺序排列，为8*3的np.array]
+		    bbox (np.BoundingBox_3d): [3D包围框的实例]
 		1 -------- 0
-		/|             /|
+		/|         /|
 		2 -------- 3 .
-		| |            | |
+		| |       | |
 		. 5 -------- 4
-		|/             |/
+		|/        |/
 		6 -------- 7
 		"""
-		
-
-		
-		lines_box = np.array([[0, 1], [1, 2], [0, 3], [2, 3], [4, 5], [4, 7], [5, 6], [6, 7],
-			[0, 4], [1, 5], [2, 6], [3, 7]])
-		colors = np.array([[0, 1, 0] for j in range(len(lines_box))])
+		points_box = bbox.get_3d_corners()
+		lines_box = np.array([[0, 1], [1, 2], [2, 3], [3, 7], [4, 5], [5, 6], [6, 7], [3, 0],
+					[0, 4], [1, 5], [2, 6], [4, 7]])
+		colors = np.array([color for j in range(len(lines_box))])
 		line_set = o3d.geometry.LineSet()
 		line_set.points = o3d.utility.Vector3dVector(points_box)
 		line_set.lines = o3d.utility.Vector2iVector(lines_box)
 		line_set.colors = o3d.utility.Vector3dVector(colors)
-		point_cloud = o3d.geometry.PointCloud()
-		point_cloud.points = o3d.utility.Vector3dVector(pc[:,:3])
-		# generateBox(point_cloud)
-		custom_draw_geometry(point_cloud, line_set)
+		self.vis.add_geometry(line_set)
 		
 if __name__ == '__main__':
-	filename = 'data/n008-2018-08-01-15-16-36-0400__LIDAR_TOP__1533151605548192.pcd.bin'
-	PCL = PointCloud(5, filename)
+	filename = 'data/TCC12.pcd'
+	PCL = PointCloud(4, filename)
+	f = open('./label/PC_0729_3.txt', 'r')
+	bbox_list = []
+	line = f.readline().rstrip()
+	while line:
+		label, occlusion, length, width, height, x, y, z, theta, angle = line.split('\t')
+		angle = math.radians(float(angle))
+		bbox = BoundingBox_3d(float(length), float(width), 
+			float(height), float(x), float(y), float(z), float(angle))
+		bbox_list.append(bbox)
+		line = f.readline().rstrip()
+	PCL.draw_3dboxes(bbox_list, color=[1,0,0])
+	#just for test
+	# box = BoundingBox_3d(5.15193, 1.89721, 1.81758, 10, 10, -1.16059, math.radians(0))
+	# PCL.draw_3dbox(box, transform_to_open3d=True)
 	PCL.display_pc()
 

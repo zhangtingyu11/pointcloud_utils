@@ -1,6 +1,3 @@
 {
-"python.pythonPath": "/home/zty/anaconda3/envs/open3d/bin/python",
-"python.analysis.extraPaths": [
-        "/home/zty/Faw_Project/devel/lib/python2.7/dist-packages"
-]
+"python.pythonPath": "/home/zty/anaconda3/envs/open3d/bin/python"
 }

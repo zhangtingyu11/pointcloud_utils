@@ -11,6 +11,7 @@ import shapely
 from shapely.geometry import Polygon
 from shapely import affinity
 from typing import List
+import math
 
 class BoundingBox_2d:
         def __init__(self, bbox_array:np.array, center_flag = False, angle = 0):
@@ -168,88 +169,57 @@ class BoundingBox_3d:
                 self.angle = angle
                 self.type = type
                 self.score = score
-                # self.y = bbox_array[1]
-                # self.z = bbox_array[2]
-                # #长宽高单位为m
-                # self.length = bbox_array[3]
-                # self.width = bbox_array[4]
-                # self.height = bbox_array[5]
-                # #angle的单位为弧度
-                # self.angle = bbox_array[6]
-                # #置信度：0~1
-                # self.score = bbox_array[7]
-                # #类别(kitti中1是car，2是person，3是cyclelist)
-                # #(coco中person是0，bycycle是1，car是2，motorbike是3，bus是5，truck是7)
-                # #统一为car是1，person是2，cyclelist是3，bycycle是4，motorbike是5，bus是6，truck是7
-                # self.classification = bbox_array[8]
-                # self.camera_intrinsic = camera_intrinsic
-                # self.camera_extrinsic2lidar = camera_extrinsic2lidar
-                # if(camera_intrinsic.all()!=None and camera_extrinsic2lidar.all()!=None):
-                #         #3D包围框投影到像素上的2D点集合，[2x8]
-                #         self.projected_2d_points = self.get_projected_2d_points()
-                # else:
-                #         self.projected_2d_points = None
-                # if(self.projected_2d_points.all() != None):
-                #         edge_point_list = self.get_projected_2d_box()
-                #         self.left_upper = [edge_point_list.left_upper_x,edge_point_list.left_upper_y]
-                #         self.right_bottom = [edge_point_list.right_bottom_x, edge_point_list.right_bottom_y]
-                #         self.box_2d = BoundingBox_2d(np.array([self.left_upper[0], self.left_upper[1], \
-                #                 self.right_bottom[0],self.right_bottom[1],self.score,self.classification]))
 
         def get_3d_corners(self):
                 """[得到3D角点，顺序如下图所示]
                 1 -------- 0
-		/|             /|
+		/|         /|
 		2 -------- 3 .
-		| |            | |
+		| |       | |
 		. 5 -------- 4
-		|/             |/
+		|/        |/
 		6 -------- 7
                 """
                 corners_list = []
-                corners_0 = [self.location_x+self.length/2, 
-                        self.location_y - self.width/2, self.location_z + self.height/2]
+                corners_0 = [self.length/2, - self.width/2, self.height/2]
                 corners_list.append(corners_0)
-                corners_1 = [self.location_x + self.length/2, 
-                        self.location_y + self.width/2, self.location_z + self.height/2]
+                corners_1 = [self.length/2, self.width/2, self.height/2]
                 corners_list.append(corners_1)
-                corners_2 = [self.location_x - self.length/2, 
-                        self.location_y + self.width/2, self.location_z + self.height/2]
+                corners_2 = [-self.length/2, self.width/2, self.height/2]
                 corners_list.append(corners_2)
-                corners_3 = [self.location_x - self.length/2,
-                        self.location_y - self.width/2, self.location_z + self.height/2]
+                corners_3 = [-self.length/2, -self.width/2, self.height/2]
                 corners_list.append(corners_3)
-                corners_4 = [self.location_x + self.length/2, 
-                        self.location_y - self.width/2, self.location_z - self.height/2]
+                corners_4 = [self.length/2, -self.width/2, -self.height/2]
                 corners_list.append(corners_4)
-                corners_5 = [self.location_x + self.length/2, 
-                        self.location_y + self.width/2, self.location_z - self.height/2]
+                corners_5 = [self.length/2, self.width/2, -self.height/2]
                 corners_list.append(corners_5)
-                corners_6 = [self.location_x - self.length/2,
-                        self.location_y + self.width/2, self.location_z - self.height/2]
+                corners_6 = [-self.length/2, self.width/2, -self.height/2]
                 corners_list.append(corners_6)
-                corners_7 = [self.location_x - self.length/2,
-                        self.location_y - self.width/2, self.location_z - self.height/2]
+                corners_7 = [-self.length/2, -self.width/2, -self.height/2]
+                corners_list.append(corners_7)
+                corners_array = np.asarray(corners_list, dtype=np.float32)
+                rotate_matrix = self.get_rotation_matrix_along_z(self.angle)
+                corners_array = np.dot(rotate_matrix, np.transpose(corners_array))
+                corners_array = np.transpose(corners_array)
+                corners_array[:,0] += self.location_x
+                corners_array[:,1] += self.location_y
+                corners_array[:,2] += self.location_z
+
+                return corners_array
+
+        def load_camera_intrinsic(self, camera_intrinsic):
+                self.camera_intrinsic = camera_intrinsic
+
+        def load_camera_extrinsic2lidar(self, camera_extrinsic2lidar):
+                self.camera_extrinsic2lidar = camera_extrinsic2lidar
 
         def get_projected_2d_points(self)->np.array:
-                """[summary]
+                """[获取3D点投影到图像上的2D点，需要提前调用load_camera_intrinsic和load_camera_extrinsic2lidar加载相机内外参]
 
                 Returns:
                     np.array: [2D像素点的角点坐标]
                 """
-                rotation_matrix = self.get_rotation_matrix()
-                x_corners = [self.length/2, self.length/2, -self.length/2, -self.length/2, \
-                        self.length/2, self.length/2, -self.length/2, -self.length/2]
-                y_corners = [self.width/2, self.width/2, self.width/2, self.width/2, \
-                        -self.width/2, -self.width/2, -self.width/2 , -self.width/2]
-                z_corners = [self.height/2, -self.height/2, -self.height/2, self.height/2,\
-                        self.height/2, -self.height/2, -self.height/2, self.height/2]
-
-                #旋转并计算3D包围框，corners_3d为（3x8)的矩阵
-                corners_3d = np.dot(rotation_matrix, np.vstack([x_corners, y_corners, z_corners]))
-                corners_3d[0, :] = corners_3d[0, :] + self.x
-                corners_3d[1, :] = corners_3d[1, :] + self.y
-                corners_3d[2, :] = corners_3d[2, :] + self.z-0.3
+                corners_3d = np.transpose(self.get_3d_corners())
 
                 #将激光雷达坐标系下的3D点转化为齐次坐标([3x8]->[4x8])
                 lidar_corners_3d = np.vstack((corners_3d, np.ones((1, 8))))
@@ -263,17 +233,19 @@ class BoundingBox_3d:
                 corners2d[0,:]=corners2d[0,:]/corners2d[2,:]
                 corners2d[1,:] = corners2d[1,:]/corners2d[2,:]
                 #只取前两行([2x8])
-                corners2d = corners2d[0:2,:]
+                corners2d = np.transpose(corners2d[0:2,:])
                 return corners2d
 
-        def get_rotation_matrix(self)->np.array:
-                """[summary]
-
+        def get_rotation_matrix_along_z(self, angle)->np.array:
+                """[获取绕着z轴旋转的旋转矩阵，z轴为指向天的轴]
+                Args:
+                    angle ([type]): [逆时针旋转的角度]
                 Returns:
                     np.array: [返回3x3的旋转矩阵]
                 """
-                cos_theta = np.cos(self.angle)
-                sin_theta = np.sin(self.angle)
+
+                cos_theta = np.cos(angle)
+                sin_theta = np.sin(angle)
                 return np.array([[cos_theta, -sin_theta, 0], [sin_theta, cos_theta, 0], [0, 0, 1]])
 
         def get_projected_2d_box(self)->np.array:
@@ -282,11 +254,11 @@ class BoundingBox_3d:
                 Returns:
                     np.array: [[2x2]的矩阵，以行划分，第0行是左上角的点，第1行是右下角的点]
                 """
-
-                min_x = min(self.projected_2d_points[0][:])
-                min_y = min(self.projected_2d_points[1][:])
-                max_x = max(self.projected_2d_points[0][:])
-                max_y = max(self.projected_2d_points[1][:])
+                projected_2d_points = self.get_projected_2d_points()
+                min_x = min(projected_2d_points[:][0])
+                min_y = min(projected_2d_points[:][1])
+                max_x = max(projected_2d_points[:][0])
+                max_y = max(projected_2d_points[:][1])
                 return BoundingBox_2d(np.array([min_x,min_y, max_x,max_y]))
         
         def get_bev_2d_box(self)->np.array:
@@ -295,7 +267,7 @@ class BoundingBox_3d:
                 Returns:
                     np.array: [返回3D包围框投影到BEV视角的2D包围框]
                 """
-                return BoundingBox_2d(np.array([self.x,self.y,self.length,self.width]), center_flag=True, angle = self.angle)
+                return BoundingBox_2d(np.array([self.location_x,self.location_y,self.length,self.width]), center_flag=True, angle = self.angle)
 
         def get_bev_2d_iou(self, d3bbox2)->float:
                 """[计算BEV视角下的2Diou]
@@ -308,7 +280,14 @@ class BoundingBox_3d:
                 """
                 return compute_2d_iou(self.get_bev_2d_box(), d3bbox2.get_bev_2d_box())
         
+        def transform_3d_points_to_open3d(self, points:np.array):
+                """[将点云从激光雷达坐标系转换到open3d坐标系，只需要将点逆时针旋转90度]
 
-
+                Args:
+                    points (np.array): [N*3的点矩阵]
+                """
+                points = points[:,[1,0,2]]
+                points[:, 0] = -points[:, 0]
+                return points
 
 
