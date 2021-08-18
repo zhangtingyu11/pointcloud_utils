@@ -62,6 +62,12 @@ class PointCloud():
 		self.pc_numpy = np.fromfile(bin_filename, dtype=np.float32).reshape(-1, self.channel_num)
 		self.open_cloud = self.numpy_to_open3d()
 
+	def write_bin_file(self, bin_filename:str):
+		if(bin_filename.endswith('bin')):
+			self.pc_numpy.tofile(bin_filename)
+		else:
+			assert('write_filename is not bin file')
+
 	def numpy_to_open3d(self):
 		open_cloud = o3d.geometry.PointCloud()
 		open_cloud.points = o3d.utility.Vector3dVector(self.pc_numpy[:,0:3])
