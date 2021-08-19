@@ -1,6 +1,6 @@
 import open3d as o3d
 import numpy as np
-from bbox_utils import BoundingBox_3d
+from pointcloud_utils.bbox_utils import BoundingBox_3d
 import math
 
 class PointCloud():
@@ -17,8 +17,7 @@ class PointCloud():
 			self.read_pc_from_file(filename)
 		if(points != None):
 			self.pc_numpy = points
-		self.create_vis()
-
+		self.vis = None
 		
 
 	def read_pc_from_file(self, filename:str):
@@ -78,20 +77,29 @@ class PointCloud():
 		self.vis.create_window()
 
 	def destroy_vis(self):
-		self.vis.destroy_window()
+		if(self.vis == None):
+			assert("There is no vis")
+		else:
+			self.vis.destroy_window()
 
 	def display_pc(self, bbox_array = None):
-		self.vis.add_geometry(self.open_cloud)
-		render_option = self.vis.get_render_option()
-		render_option.point_size = 2
-		render_option.background_color = np.asarray([0, 0, 0])
-	
-		self.vis.run()
-		self.destroy_vis()
+		if(self.vis == None):
+			assert("Use PointCloud.create_vis() to create vis")
+		else:
+			self.vis.add_geometry(self.open_cloud)
+			render_option = self.vis.get_render_option()
+			render_option.point_size = 2
+			render_option.background_color = np.asarray([0, 0, 0])
+		
+			self.vis.run()
+			self.destroy_vis()
 
 	def draw_3dboxes(self, boxes, color = [0,1,0]):
-		for box in boxes:
-			self.draw_3dbox(box, color)
+		if(self.vis == None):
+			assert("Use PointCloud.create_vis() to create vis")
+		else:
+			for box in boxes:
+				self.draw_3dbox(box, color)
 
 
 	def draw_3dbox(self, bbox:BoundingBox_3d, color = [0,1,0]):
@@ -117,22 +125,15 @@ class PointCloud():
 		line_set.colors = o3d.utility.Vector3dVector(colors)
 		self.vis.add_geometry(line_set)
 		
-if __name__ == '__main__':
-	filename = 'data/TCC12.pcd'
-	PCL = PointCloud(4, filename)
-	f = open('./label/PC_0729_3.txt', 'r')
-	bbox_list = []
-	line = f.readline().rstrip()
-	while line:
-		label, occlusion, length, width, height, x, y, z, theta, angle = line.split('\t')
-		angle = math.radians(float(angle))
-		bbox = BoundingBox_3d(float(length), float(width), 
-			float(height), float(x), float(y), float(z), float(angle))
-		bbox_list.append(bbox)
+	def draw_3dboxes_from_txt(self, txt_filename, color = [0,1,0]):
+		f = open(txt_filename, 'r')
 		line = f.readline().rstrip()
-	PCL.draw_3dboxes(bbox_list, color=[1,0,0])
-	#just for test
-	# box = BoundingBox_3d(5.15193, 1.89721, 1.81758, 10, 10, -1.16059, math.radians(0))
-	# PCL.draw_3dbox(box, transform_to_open3d=True)
-	PCL.display_pc()
+		box_list = []
+		while line:
+			type, occlusion, length, width, height, x, y, z, theta, angle = line.split('\t')
+			box = BoundingBox_3d(float(length), float(width), float(height), float(x), float(y), float(z), float(angle)*math.pi/180)
+			box_list.append(box)
+			line = f.readline().rstrip()
+		self.draw_3dboxes(box_list, color)
+		return box_list
 

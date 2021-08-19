@@ -14,81 +14,93 @@ from typing import List
 import math
 
 class BoundingBox_2d:
-        def __init__(self, bbox_array:np.array, center_flag = False, angle = 0):
-                """[summary]
+        def __init__(self, center_x, center_y,width, height, angle = 0.0, type = None, score = 0, lidar_xy = True):
+                """[初始化2D包围框]
+                lidar_xy为True的坐标系：
+                                        x
+                                        ^
+                                        |
+                                        |
+                                        |
+                                        |
+                          y<-------------
+                lidar_xy为False的坐标系：
+                        --------------->x
+                        |
+                        |
+                        |
+                        |
+                        |
+                        |
+                        v
+                        y  
+                宽为y轴上的长度，高为x轴上的高度
+                Args:
+                    center_x ([type]): [包围框的中心点x坐标]
+                    center_y ([type]): [包围框的中心点y坐标]
+                    width ([type]): [包围框宽]
+                    height ([type]): [包围框高]
+                    angle (float, optional): [包围框顺时针旋转的角度]. Defaults to 0.
+                    type ([type], optional): [包围框的类别]. Defaults to None.
+                    score ([type], optional): [包围框的置信度]. Defaults to None.
+                    lidar_xy ([bool], optional): [是否使用lidar_xy坐标系]. Defaults to True.
+                """
+                self.center_x = center_x
+                self.center_y = center_y
+                self.width = width
+                self.height = height
+                self.angle = angle
+                self.type = type
+                self.score = score
+                self.lidar_xy = lidar_xy
+        
+        def get_corners(self)->np.array:
+                """[获取此顺序下的角点坐标]
+                0----------1
+                |          |
+                |          |
+                |          |
+                |          |
+                3----------2
+
+                Returns:
+                    np.array: [4*2的角点坐标]
+                """
+                corners_2d = []
+                corner_0 = [self.height/2, self.width/2]
+                corners_2d.append(corner_0)
+                corner_1 = [self.height/2, -self.width/2]
+                corners_2d.append(corner_1)
+                corner_2 = [-self.height/2, -self.width/2]
+                corners_2d.append(corner_2)
+                corner_3 = [-self.height/2, self.width/2]
+                corners_2d.append(corner_3)
+                corners_2d = np.asarray(corners_2d)
+                if(self.lidar_xy):
+                        rotate_matrix = self.get_2d_rotate_matrix(self.angle)
+                        corners_2d = np.transpose(np.dot(rotate_matrix, np.transpose(corners_2d)))
+                else:
+                        #坐标系相反需要调整
+                        rotate_matrix = self.get_2d_rotate_matrix(-self.angle)
+                        corners_2d = np.transpose(np.dot(rotate_matrix, np.transpose(corners_2d))) 
+                corners_2d[:,0] += self.center_x
+                corners_2d[:,1] += self.center_y
+                return corners_2d
+
+        @staticmethod
+        def get_2d_rotate_matrix(angle):
+                """[获取2D逆时针旋转的角度]
 
                 Args:
-                    bbox_array (np.array): [用来表示包围框的数组]
-                    center_flag (bool, optional): [是否使用2D框的中心表示法]. Defaults to False.
-                        如果为True：代表使用中心表示法，bbox_array为[center_x, center_y, width, height, score, class]
-                        如果为False：代表使用角点表示法，bbox_array为[left_upper_x, left_upper_y, right_bottom_x, right_bottom_y, score, class]
-                    angle(double, optional):[绕着几何中心逆时针旋转的角度]. Defaults to 0.角度值，而非弧度
+                    angle ([type]): [逆时针旋转的角度]
+
+                Returns:
+                    [type]: [2*2的旋转矩阵]
                 """
-                if(center_flag):
-                        #包围框的左上角角点x坐标：中心点x-包围框宽度/2
-                        self.left_upper_x = bbox_array[0] - bbox_array[2]/2
-                        #包围框的左上角角点y坐标：中心点y-包围框高度/2
-                        self.left_upper_y = bbox_array[1] - bbox_array[3]/2
-                        #包围框的右下角角点x坐标：中心点x+包围框宽度/2
-                        self.right_bottom_x = bbox_array[0] + bbox_array[2]/2
-                        #包围框的右下角角点y坐标：中心点y+包围框高度/2
-                        self.right_bottom_y = bbox_array[1] + bbox_array[3]/2
-                else:
-                        #包围框的左上角角点x坐标
-                        self.left_upper_x = bbox_array[0]
-                        #包围框的左上角角点y坐标
-                        self.left_upper_y = bbox_array[1]
-                        #包围框的右下角角点x坐标
-                        self.right_bottom_x = bbox_array[2]
-                        #包围框的右下角角点y坐标
-                        self.right_bottom_y = bbox_array[3]
-                        #包围框的左上角角点坐标
-                #包围框的左上角角点坐标
-                self.left_upper = np.array([self.left_upper_x, self.left_upper_y])
-                #包围框的右下角角点坐标
-                self.right_bottom = np.array([self.right_bottom_x, self.right_bottom_y])
-                #包围框的左下角角点坐标
-                self.left_bottom = np.array([self.left_upper_x, self.right_bottom_y])
-                #包围框的右上角角点坐标
-                self.right_upper = np.array([self.right_bottom_x, self.left_upper_y])
-
-                #所有角点汇总成一个numpy数组(4x2)，需要逆时针选点
-                self.points = np.vstack((self.left_upper, self.left_bottom, self.right_bottom, self.right_upper))
-                if(angle != 0):
-                        #绕着几何中心旋转angle角度，生成的是Polygon对象
-                        rotated_points_poly = affinity.rotate(Polygon([(self.left_upper_x,self.left_upper_y), (self.right_bottom_x, self.left_upper_y), 
-                                (self.right_bottom_x, self.right_bottom_y),(self.left_upper_x,self.right_bottom_y)]),angle)
-                        #将Polygon转化为numpy数组，5x2，最后一个坐标点重复
-                        rotated_points = np.asarray(rotated_points_poly.exterior.coords)
-                        #重新赋值
-                        self.points = rotated_points[0:4][:]
-                        self.left_upper_x = rotated_points[0][0]
-                        self.left_upper_y = rotated_points[0][1]
-                        self.right_bottom_x = rotated_points[2][0]
-                        self.right_bottom_y = rotated_points[2][1]
-                        self.left_upper = rotated_points[0]
-                        self.left_bottom = rotated_points[1]
-                        self.right_bottom = rotated_points[2]
-                        self.right_upper = rotated_points[3]
-
-                #置信度(0~1)
-                self.score = bbox_array[4]
-                #类别(kitti中1是car，2是person，3是cyclelist)
-                #(coco中person是0，bycycle是1，car是2，motorbike是3，bus是5，truck是7)
-                #统一为car是1，person是2，cyclelist是3，bycycle是4，motorbike是5，bus是6，truck是7
-                #对需要检测的目标类别做映射，其他的类别设置为-1
-                if(bbox_array[5] == 2):
-                        self.classification = 1
-                elif(bbox_array[5] == 0):
-                        self.classification = 2
-                elif(bbox_array[5] == 1):
-                        self.classification = 4
-                elif(bbox_array[5] == 3):
-                        self.classification = 5
-                elif(bbox_array[5] == 5):
-                        self.classification = 6
-                else:
-                        self.classification = -1              
+                cos_theta = math.cos(angle)
+                sin_theta = math.sin(angle)
+                return np.array([[cos_theta, -sin_theta], [sin_theta, cos_theta]])
+                
         def bbox_in_rectangle(self, min_x, max_x, min_y, max_y)->bool:
                 """[判断2D包围框在不在矩形范围内]
 
@@ -101,7 +113,7 @@ class BoundingBox_2d:
                 Returns:
                     bool: [如果在矩形内返回True，如果不在返回False]
                 """
-                poly1 = Polygon(self.points).convex_hull
+                poly1 = Polygon(self.get_corners()).convex_hull
                 poly2 = Polygon([(min_x, min_y),(min_x, max_y),(max_x,max_y),(max_x,min_y)]).convex_hull
                 if not poly1.intersects(poly2):
                         return False
@@ -117,37 +129,38 @@ class BoundingBox_2d:
                 
 
                 
+        @staticmethod
+        def compute_2d_iou(bbox1, bbox2)->float:
+                """计算两个2D包围框的iou
 
-def compute_2d_iou(bbox1:BoundingBox_2d, bbox2:BoundingBox_2d)->float:
-        """计算两个2D包围框的iou
+                Args:
+                        bbox1 (BoundingBox_2d): [其中一个2D包围框]
+                        bbox2 (BoundingBox_2d): [另一个2D包围框]
 
-        Args:
-                bbox1 (BoundingBox_2d): [其中一个2D包围框]
-                bbox2 (BoundingBox_2d): [另一个2D包围框]
-
-        Returns:
-                double: [返回iou的值]
-        """
-        poly1 = Polygon(bbox1.points).convex_hull
-        poly2 = Polygon(bbox2.points).convex_hull
-        #如果没有交集，iou为0
-        if not poly1.intersects(poly2):
-                iou = 0
-        else:
-                try:
-                        #交集面积
-                        inter_area = poly1.intersection(poly2).area
-                        #并集面积 = bbox1的面积+bbox2的面积-交集面积
-                        union_area = poly1.area + poly2.area - inter_area
-                        iou = inter_area/union_area
-                except shapely.geos.TopologicalError:
-                        print('shapely.geos.TopologicalError occured, iou set to 0')
+                Returns:
+                        double: [返回iou的值]
+                """
+                poly1 = Polygon(bbox1.get_corners()).convex_hull
+                poly2 = Polygon(bbox2.get_corners()).convex_hull
+                #如果没有交集，iou为0
+                if not poly1.intersects(poly2):
                         iou = 0
-        return iou
+                else:
+                        try:
+                                #交集面积
+                                inter_area = poly1.intersection(poly2).area
+                                #并集面积 = bbox1的面积+bbox2的面积-交集面积
+                                union_area = poly1.area + poly2.area - inter_area
+                                iou = inter_area/union_area
+                        except shapely.geos.TopologicalError:
+                                print('shapely.geos.TopologicalError occured, iou set to 0')
+                                iou = 0
+                return iou
 
 class BoundingBox_3d:
-        def __init__(self, length, width, height, location_x, location_y, location_z, angle = 0, type = None, score = None):
+        def __init__(self, length, width, height, location_x, location_y, location_z, angle = 0, type = None, score = 0):
                 """[初始化3D包围框类]
+                x轴向前，y轴向左，z轴向上，长为x轴上的长度，宽为y轴上的长度，高度为z轴上的长度
 
                 Args:
                     length ([type]): [障碍物的长]
@@ -158,7 +171,7 @@ class BoundingBox_3d:
                     location_z ([type]): [障碍物中心点的z位置]
                     angle (int, optional): [障碍物相对于主车顺时针旋转的角度(单位为弧度)]. Defaults to 0.
                     type ([type], optional): [障碍物类别，0为车，1为行人，2为非机动车]. Defaults to None.
-                    score ([type], optional): [障碍物的分类置信度]. Defaults to None.
+                    score ([type], optional): [障碍物的分类置信度]. Defaults to 0.
                 """
                 self.length = length
                 self.width = width
@@ -169,8 +182,10 @@ class BoundingBox_3d:
                 self.angle = angle
                 self.type = type
                 self.score = score
+                self.camera_intrinsic = None
+                self.camera_extrinsic2lidar = None
 
-        def get_3d_corners(self):
+        def get_3d_corners(self)->np.array:
                 """[得到3D角点，顺序如下图所示]
                 1 -------- 0
 		/|         /|
@@ -179,7 +194,11 @@ class BoundingBox_3d:
 		. 5 -------- 4
 		|/        |/
 		6 -------- 7
+
+                Returns:
+                    np.array: [8*3的角点坐标]
                 """
+
                 corners_list = []
                 corners_0 = [self.length/2, - self.width/2, self.height/2]
                 corners_list.append(corners_0)
@@ -207,10 +226,20 @@ class BoundingBox_3d:
 
                 return corners_array
 
-        def load_camera_intrinsic(self, camera_intrinsic):
+        def load_camera_intrinsic(self, camera_intrinsic:np.array):
+                """[存储相机的内参]
+
+                Args:
+                    camera_intrinsic (np.array): [相机的3*4的相机内参]
+                """
                 self.camera_intrinsic = camera_intrinsic
 
-        def load_camera_extrinsic2lidar(self, camera_extrinsic2lidar):
+        def load_camera_extrinsic2lidar(self, camera_extrinsic2lidar:np.array):
+                """[加载相机外参]
+
+                Args:
+                    camera_extrinsic2lidar (np.array): [雷达相对于相机的外参的3*4的外参矩阵]
+                """
                 self.camera_extrinsic2lidar = camera_extrinsic2lidar
 
         def get_projected_2d_points(self)->np.array:
@@ -219,6 +248,10 @@ class BoundingBox_3d:
                 Returns:
                     np.array: [2D像素点的角点坐标]
                 """
+                if(self.camera_intrinsic == None):
+                        assert("相机内参未加载，调用BoundingBox_3d.load_camera_intrinsic()加载")
+                if(self.camera_extrinsic2lidar == None):
+                        assert("相机外参未加载，调用BoundingBox_3d.load_camera_extrinsic2lidar()加载")
                 corners_3d = np.transpose(self.get_3d_corners())
 
                 #将激光雷达坐标系下的3D点转化为齐次坐标([3x8]->[4x8])
@@ -236,7 +269,8 @@ class BoundingBox_3d:
                 corners2d = np.transpose(corners2d[0:2,:])
                 return corners2d
 
-        def get_rotation_matrix_along_z(self, angle)->np.array:
+        @staticmethod
+        def get_rotation_matrix_along_z(angle)->np.array:
                 """[获取绕着z轴旋转的旋转矩阵，z轴为指向天的轴]
                 Args:
                     angle ([type]): [逆时针旋转的角度]
@@ -259,15 +293,17 @@ class BoundingBox_3d:
                 min_y = min(projected_2d_points[:][1])
                 max_x = max(projected_2d_points[:][0])
                 max_y = max(projected_2d_points[:][1])
-                return BoundingBox_2d(np.array([min_x,min_y, max_x,max_y]))
+                return BoundingBox_2d(center_x = (min_x+max_x)/2, center_y = (min_y+max_y)/2,
+                        width = max_x-min_x, height = max_y-min_y)
         
-        def get_bev_2d_box(self)->np.array:
+        def get_bev_2d_box(self)->BoundingBox_2d:
                 """[获得3D包围框投影到BEV视角的2D包围框]
 
                 Returns:
-                    np.array: [返回3D包围框投影到BEV视角的2D包围框]
+                    BoundingBox_2d: [返回3D包围框投影到BEV视角的2D包围框]
                 """
-                return BoundingBox_2d(np.array([self.location_x,self.location_y,self.length,self.width]), center_flag=True, angle = self.angle)
+                return BoundingBox_2d(center_x = self.location_x, center_y=self.location_y,
+                        width = self.width, height = self.length, angle = self.angle)
 
         def get_bev_2d_iou(self, d3bbox2)->float:
                 """[计算BEV视角下的2Diou]
@@ -278,16 +314,6 @@ class BoundingBox_3d:
                 Returns:
                     float: [iou的值]
                 """
-                return compute_2d_iou(self.get_bev_2d_box(), d3bbox2.get_bev_2d_box())
-        
-        def transform_3d_points_to_open3d(self, points:np.array):
-                """[将点云从激光雷达坐标系转换到open3d坐标系，只需要将点逆时针旋转90度]
-
-                Args:
-                    points (np.array): [N*3的点矩阵]
-                """
-                points = points[:,[1,0,2]]
-                points[:, 0] = -points[:, 0]
-                return points
+                return BoundingBox_2d.compute_2d_iou(self.get_bev_2d_box(), d3bbox2.get_bev_2d_box())
 
 
