@@ -28,25 +28,31 @@ class Evaluation_2d():
                                 pass
                         else:
                                 gt_flag[max_index] = 1  
+                
                 TP_num = sum(gt_flag)
                 FP_num = len(self.pred_boxes) - TP_num
-                return TP_num, FP_num
+                for i in range(len(gt_flag)):
+                        if(gt_flag[i] == 0):
+                                gt_flag[i] = False
+                        else:
+                                gt_flag[i] = True
+                return TP_num, FP_num, gt_flag
         
         def compute_recall(self):
-                TP,FP = self.compute_TP_FP()
+                TP,FP,gt_flag = self.compute_TP_FP()
                 print("TP num:{}".format(TP))
                 print("FP num:{}".format(FP))
                 recall = TP/len(self.gt_boxes)
                 print("Recall:{}".format(recall))
-                return recall
+                return recall,gt_flag
 
         def compute_precision(self):
-                TP,FP = self.compute_TP_FP()
+                TP,FP,gt_flag = self.compute_TP_FP()
                 print("TP num:{}".format(TP))
                 print("FP num:{}".format(FP))
                 precision = TP/len(self.pred_boxes)
                 print("Precision:{}".format(precision))
-                return precision
+                return precision,gt_flag
 
 class Evaluation_3d():
         def __init__(self, pred_boxes, gt_boxes, iou_thresh = 0.7):
@@ -65,17 +71,17 @@ class Evaluation_3d():
                 return eval.compute_TP_FP()
         
         def compute_recall(self):
-                TP,FP = self.compute_TP_FP()
+                TP,FP,gt_flag = self.compute_TP_FP()
                 print("TP num:{}".format(TP))
                 print("FP num:{}".format(FP))
                 recall = TP/len(self.gt_boxes)
                 print("Recall:{}".format(recall))
-                return TP/len(self.gt_boxes)
+                return TP/len(self.gt_boxes),gt_flag
 
         def compute_precision(self):
-                TP,FP = self.compute_TP_FP()
+                TP,FP,gt_flag = self.compute_TP_FP()
                 print("TP num:{}".format(TP))
                 print("FP num:{}".format(FP))
                 recall = TP/len(self.gt_boxes)
                 print("Recall:{}".format(recall))
-                return TP/len(self.pred_boxes)
+                return TP/len(self.pred_boxes),gt_flag
