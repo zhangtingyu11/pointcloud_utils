@@ -141,11 +141,11 @@ class PointCloud():
         line = f.readline().rstrip()
         box_list = []
         while line:
-            type, occlusion, length, width, height, x, y, z, theta, angle = line.split(
+            type, occlusion, length, width, height, x, y, z, theta, angle, *_ = line.split(
                 '\t')
             box = BoundingBox_3d(float(length), float(width), float(height),
                                  float(x), float(y), float(z),
-                                 float(angle) * math.pi / 180)
+                                 math.radians(float(angle)))
             box_list.append(box)
             line = f.readline().rstrip()
         self.draw_3dboxes(box_list, color)
