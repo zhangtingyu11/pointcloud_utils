@@ -39,6 +39,9 @@ file_road_in_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/road/ro
 file_road = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/road/road_in_road.txt"
 file_road_gps = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/road/road_gps.txt"
 
+file_fusion_20m_gps = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_20m.txt"
+file_fusion_20m_in_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_20m_in_map.txt"
+
 f_20m = open(file_20m, "r+")
 f_20m_lines = f_20m.readlines()
 for i in range(len(f_20m_lines)):
@@ -129,7 +132,22 @@ f_road_in_map.writelines(f_road_gps_lines)
 f_road_in_map.close()
 
 
-pc = PointCloud(channel_num=4, filename=pcd_road)
+f_fusion_20m_gps = open(file_fusion_20m_gps, "r+")
+f_fusion_20m_gps_lines = f_fusion_20m_gps.readlines()
+for i in range(len(f_fusion_20m_gps_lines)):
+    classification, occlusion, length, width, height, lon, lat, z, theta, heading, score = f_fusion_20m_gps_lines[
+        i].rstrip().split('\t')
+    obj_x, obj_y, obj_angle = coor_trans.gps2lidar_coor(
+        car_map_lon, car_map_lat, car_map_heading, float(lon), float(lat),
+        float(heading))
+    f_fusion_20m_gps_lines[i] = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+        classification, occlusion, length, width, height, obj_x, obj_y, z,
+        theta, obj_angle, score)
+f_fusion_20m_in_map = open(file_fusion_20m_in_map, 'w+')
+f_fusion_20m_in_map.writelines(f_fusion_20m_gps_lines)
+
+
+pc = PointCloud(channel_num=4, filename=pcd_map)
 pc.create_vis()
 # # 显示路侧数据
 # obj_x, obj_y, obj_angle = coor_trans.gps2lidar_coor(car_map_lon, car_map_lat,
@@ -148,7 +166,7 @@ pc.create_vis()
 # line_set.colors = o3d.utility.Vector3dVector(colors)
 # pc.vis.add_geometry(line_set)
 # pred_boxes = pc.draw_3dboxes_from_txt(file_map, [1, 1, 1])
-road_boxrs = pc.draw_3dboxes_from_txt(file_road_in_map, [1, 0, 0])
+road_boxrs = pc.draw_3dboxes_from_txt(file_fusion_20m_in_map, [1, 0, 0])
 
 
 pc.display_pc()
