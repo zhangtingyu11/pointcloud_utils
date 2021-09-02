@@ -44,7 +44,7 @@ file_fusion_20m_gps = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusi
 file_fusion_20m_in_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_20m_in_map.txt"
 file_fusion_40m_gps = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_40m_gps.txt"
 file_fusion_40m_in_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_40m_in_map.txt"
-
+file_fusion_40m_in_map_add_height = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/fusion/fusion_40m_in_map_add_height.txt"
 f_20m = open(file_20m, "r+")
 f_20m_lines = f_20m.readlines()
 for i in range(len(f_20m_lines)):
@@ -168,6 +168,22 @@ f_fusion_40m_in_map = open(file_fusion_40m_in_map, 'w+')
 f_fusion_40m_in_map.writelines(f_fusion_40m_gps_lines)
 f_fusion_40m_in_map.close()
 
+
+f_fusion_40m_gps = open(file_fusion_40m_gps, "r+")
+f_fusion_40m_gps_lines = f_fusion_40m_gps.readlines()
+for i in range(len(f_fusion_40m_gps_lines)):
+    classification, occlusion, length, width, height, lon, lat, z, theta, heading, score = f_fusion_40m_gps_lines[
+        i].rstrip().split('\t')
+    obj_x, obj_y, obj_angle = coor_trans.gps2lidar_coor(
+        car_map_lon, car_map_lat, car_map_heading, float(lon), float(lat),
+        float(heading))
+    f_fusion_40m_gps_lines[i] = "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\n".format(
+        classification, occlusion, length, width, height, obj_x, obj_y, float(z)+4,
+        theta, obj_angle, score)
+f_fusion_40m_in_map_add_height = open(file_fusion_40m_in_map_add_height, 'w+')
+f_fusion_40m_in_map_add_height.writelines(f_fusion_40m_gps_lines)
+f_fusion_40m_in_map_add_height.close()
+
 pc = PointCloud(channel_num=4, filename=pcd_map)
 # pc.down_sample(40)
 pc.write_pcd("/home/zty/My_Project/pointcloud_utils/data/pcd_files/map/whole_map_down_sample.pcd")
@@ -189,7 +205,11 @@ pc.create_vis()
 # line_set.colors = o3d.utility.Vector3dVector(colors)
 # pc.vis.add_geometry(line_set)
 # pred_boxes = pc.draw_3dboxes_from_txt(file_map, [1, 1, 1])
-road_boxrs = pc.draw_3dboxes_from_txt(file_fusion_40m_in_map, [1, 0, 0])
+# road_boxrs = pc.draw_3dboxes_from_txt(file_fusion_40m_in_map, [1, 0, 0])
+road_boxrs = pc.draw_3dboxes_from_txt(file_40m_in_map, [0, 1, 0])
+road_boxrs = pc.draw_3dboxes_from_txt(file_road_in_map, [1, 0, 0])
+road_boxrs = pc.draw_3dboxes_from_txt(file_fusion_40m_in_map_add_height, [1, 1, 1])
+
 
 
 pc.display_pc()
