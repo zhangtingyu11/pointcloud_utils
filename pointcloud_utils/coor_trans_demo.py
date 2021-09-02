@@ -6,6 +6,7 @@ import open3d as o3d
 pcd_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/map/map.pcd"
 pcd_20m = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/20m/20m.pcd"
 pcd_road = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/map/map.pcd"
+pcd_whole_map = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/map/whole_map.pcd"
 
 
 file_20m = "/home/zty/My_Project/pointcloud_utils/data/pcd_files/20m/20m.txt"
@@ -168,6 +169,8 @@ f_fusion_40m_in_map.writelines(f_fusion_40m_gps_lines)
 f_fusion_40m_in_map.close()
 
 pc = PointCloud(channel_num=4, filename=pcd_map)
+# pc.down_sample(40)
+pc.write_pcd("/home/zty/My_Project/pointcloud_utils/data/pcd_files/map/whole_map_down_sample.pcd")
 pc.create_vis()
 # # 显示路侧数据
 # obj_x, obj_y, obj_angle = coor_trans.gps2lidar_coor(car_map_lon, car_map_lat,
