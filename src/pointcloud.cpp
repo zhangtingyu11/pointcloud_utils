@@ -4,8 +4,11 @@ PointCloud::PointCloud(){
         cloud.reset(new PointCloudType);
 }
 
+PointCloud::~PointCloud(){
+}
+
 void PointCloud::read_pcd_file(const char * filename){
-        if (pcl::io::loadPCDFile<PointCloudType> (filename, cloud) == -1)
+        if (pcl::io::loadPCDFile(filename, *cloud) == -1)
         {
                 PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
                 return;

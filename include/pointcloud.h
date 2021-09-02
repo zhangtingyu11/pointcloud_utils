@@ -2,8 +2,8 @@
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 
-
-typedef pcl::PointCloud<pcl::PointXYZI> PointCloudType;
+typedef pcl::PointXYZI PointType;
+typedef  pcl::PointCloud<PointType> PointCloudType;
 
 class PointCloud{
         public:

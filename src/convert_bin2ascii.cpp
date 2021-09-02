@@ -1,7 +1,7 @@
 #include "pointcloud.h"
 
 int main(int argc, char ** argv){
-        if(argc != 2){
+        if(argc != 3){
                 std::cerr << "Must Enter 2 Filename!" << std::endl;
         }
         const char * binary_file = argv[1];
