@@ -12,6 +12,8 @@ class PointCloud{
                 void read_pcd_file(const char * filename);
                 void write_ascii_pcd_file(const char * filename);
                 void write_binary_pcd_file(const char * filename);
+                void readKittiPclBinData(std::string &in_file, std::string& out_file);
+
 
         private:
                 PointCloudType::Ptr cloud;
