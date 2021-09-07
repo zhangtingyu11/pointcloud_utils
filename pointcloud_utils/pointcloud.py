@@ -5,13 +5,14 @@ import math
 
 
 class PointCloud():
-    def __init__(self, channel_num=3, filename=None, points=None) -> None:
+    def __init__(self, channel_num=3, filename=None, points=None, lift_z = 0) -> None:
         """[初始化点云类]
 
         Args:
             channel_num (int, optional): [点云的维度，目前kitti数据集需要设置为4，nuscenes数据集需要设置为]. Defaults to 3.
             filename ([type], optional): [读取的文件名]. Defaults to None.
             points ([type], optional): [可以直接读取点云]. Defaults to None.
+            lift_z (int, optional): [点云高度抬升]. Defaults to 0.
         """
         self.channel_num = channel_num
         if (filename is not None):
@@ -19,6 +20,7 @@ class PointCloud():
         if (points is not None):
             self.pc_numpy = points
         self.vis = None
+        self.lift_z = lift_z
 
     def read_pc_from_file(self, filename: str):
         """[从文件中读取点云]
@@ -65,6 +67,8 @@ class PointCloud():
             point_attr = line.split(' ')
             a_float_m = map(float, point_attr)
             pts.append(list(a_float_m))
+            # 点云抬升
+            pts[-1][-2] += self.lift_z
         self.pc_numpy = np.asarray(pts, dtype=np.float32)
         self.open_cloud = self.numpy_to_open3d()
 
