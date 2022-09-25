@@ -1,21 +1,12 @@
-import setuptools
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
-
-setuptools.setup(
-    name="pointcloud_utils",
-    version="0.0.42",
-    author="Grapymage",
-    author_email="18013933973@163.com",
-    description="A pkg about pointcloud",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
-    url="https://github.com/zhangtingyu11/pointcloud_utils",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ],
-)
+from setuptools import setup
+ 
+setup(
+    name='pc_utils', #包名
+    version='1.0',#版本
+    description='an util for processing point cloud',#描述
+    author='Grapymage',#作者
+    author_email='18013933973@163.com',#作者邮箱
+    packages=['pc_utils'],#需要封装的所有包
+    requires=['open3d','pclpy'],
+    python_requires= ">=3.8"
+   )
